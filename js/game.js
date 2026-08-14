@@ -860,8 +860,7 @@
       centerText([{ text: "날아라 고니고니", size: 26, color: "#ffd24a" }], H / 2 - 92);
       centerText([
         { text: "she's gone~~~y", size: 40, color: "#7fd6ff", gap: 60 },
-        { text: "ENTER / 화면 터치로 시작", size: 18, color: "#fff", gap: 34 },
-        { text: "← → · 터치 드래그로 이동 (자동발사) · P 정지", size: 13, color: "#ffe3b0" },
+        { text: "화면 터치로 시작", size: 18, color: "#fff", gap: 34 },
       ], H / 2 - 40);
       centerText([{ text: "HI-SCORE  " + hiScore, size: 14, color: "#fff6df" }], H - 70);
       return;
