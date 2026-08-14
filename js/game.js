@@ -58,7 +58,8 @@
   });
 
   // ---- 입력 (터치/포인터) --------------------------------------
-  // 상대 드래그: 손가락이 움직인 만큼 함선이 1:1로 즉시 이동한다(지연 없음, 가장자리 데드존 없음).
+  // 상대 드래그: 손가락 이동량 × 감도만큼 함선이 즉시 이동(지연 없음, 데드존 없음).
+  const TOUCH_SENS = 2.0; // 터치 이동 배율 (1=1:1, 클수록 빠름)
   let pointerActive = false, pointerX = null, touchFire = false, lastDragX = 0;
   function canvasX(clientX) {
     const r = canvas.getBoundingClientRect();
@@ -361,9 +362,9 @@
       // 키보드 이동
       if (keys.left) player.x -= player.speed * dt;
       if (keys.right) player.x += player.speed * dt;
-      // 터치 이동: 지난 프레임 이후 손가락이 움직인 만큼 즉시 이동 (1:1, 지연 없음)
+      // 터치 이동: 지난 프레임 이후 손가락 이동량 × 감도만큼 즉시 이동 (지연 없음)
       if (pointerActive && pointerX != null) {
-        player.x += pointerX - lastDragX;
+        player.x += (pointerX - lastDragX) * TOUCH_SENS;
         lastDragX = pointerX;
       }
       clampPlayer();
