@@ -59,7 +59,7 @@
 
   // ---- 입력 (터치/포인터) --------------------------------------
   // 상대 드래그: 손가락 이동량 × 감도만큼 함선이 즉시 이동(지연 없음, 데드존 없음).
-  const TOUCH_SENS = 1.5; // 터치 이동 배율 (1=1:1, 클수록 빠름)
+  const TOUCH_SENS = 1.3; // 터치 이동 배율 (1=1:1, 클수록 빠름)
   let pointerActive = false, pointerX = null, touchFire = false, lastDragX = 0;
   function canvasX(clientX) {
     const r = canvas.getBoundingClientRect();
