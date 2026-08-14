@@ -1,0 +1,60 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  background: #000;
+  color: #fff;
+  font-family: "Courier New", Courier, monospace;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+#game-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: 100%;
+  justify-content: center;
+}
+
+#game {
+  background: #000;
+  border: 2px solid #222;
+  box-shadow: 0 0 30px rgba(80, 120, 255, 0.25);
+  image-rendering: pixelated;
+  /* 세로 긴 모바일 비율(480×800)을 유지하며 화면에 꽉 차게 스케일 */
+  width: auto;
+  height: auto;
+  max-width: 100vw;
+  max-height: 88vh;
+  touch-action: none;      /* 터치 조작 시 스크롤/줌 방지 */
+  cursor: crosshair;
+}
+
+#controls {
+  font-size: 13px;
+  letter-spacing: 1px;
+  color: #7a8bd0;
+  user-select: none;
+  text-align: center;
+  padding: 0 8px;
+}
+
+/* 좁은 화면(모바일)에서는 캔버스를 폭에 꽉 맞추고 테두리를 얇게 */
+@media (max-width: 560px) {
+  #game {
+    max-width: 100vw;
+    max-height: 90vh;
+    border-width: 0;
+    box-shadow: none;
+  }
+  #controls { font-size: 11px; }
+}
