@@ -58,17 +58,22 @@
   });
 
   // ---- 입력 (터치/포인터) --------------------------------------
-  let pointerActive = false, pointerX = null, touchFire = false;
+  // 상대 드래그: 손가락이 움직인 만큼 함선이 1:1로 즉시 이동한다(지연 없음, 가장자리 데드존 없음).
+  let pointerActive = false, pointerX = null, touchFire = false, lastDragX = 0;
   function canvasX(clientX) {
     const r = canvas.getBoundingClientRect();
     return (clientX - r.left) * (W / r.width);
+  }
+  function grabPointer(clientX) {
+    pointerActive = true; touchFire = true;
+    pointerX = canvasX(clientX);
+    lastDragX = pointerX; // 짚는 순간엔 이동량 0 → 튀지 않음
   }
   canvas.addEventListener("pointerdown", (e) => {
     ensureAudio();
     if (state === STATE.TITLE || state === STATE.GAMEOVER) { startGame(); return; }
     if (state === STATE.PAUSED) { state = STATE.PLAYING; return; }
-    pointerActive = true; touchFire = true;
-    pointerX = canvasX(e.clientX);
+    grabPointer(e.clientX);
     e.preventDefault();
   });
   canvas.addEventListener("pointermove", (e) => {
@@ -356,12 +361,10 @@
       // 키보드 이동
       if (keys.left) player.x -= player.speed * dt;
       if (keys.right) player.x += player.speed * dt;
-      // 터치 이동: 포인터 위치로 함선 중심을 따라가게
+      // 터치 이동: 지난 프레임 이후 손가락이 움직인 만큼 즉시 이동 (1:1, 지연 없음)
       if (pointerActive && pointerX != null) {
-        const center = player.x + player.w / 2;
-        const dx = pointerX - center;
-        const step = Math.sign(dx) * Math.min(Math.abs(dx), player.speed * 1.6 * dt);
-        player.x += step;
+        player.x += pointerX - lastDragX;
+        lastDragX = pointerX;
       }
       clampPlayer();
 
