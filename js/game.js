@@ -878,14 +878,14 @@
     if (state === STATE.PAUSED) {
       ctx.fillStyle = "rgba(0,0,0,0.55)"; ctx.fillRect(0, 0, W, H);
       centerText([{ text: "일시정지", size: 32, color: "#fff", gap: 40 },
-                  { text: "P / 터치로 계속", size: 16, color: "#7a8bd0" }], H / 2);
+                  { text: "터치로 계속", size: 16, color: "#7a8bd0" }], H / 2);
     }
     if (state === STATE.GAMEOVER) {
       ctx.fillStyle = "rgba(0,0,0,0.6)"; ctx.fillRect(0, 0, W, H);
       centerText([
         { text: "GAME OVER", size: 40, color: "#ff5a8a", gap: 50 },
         { text: "SCORE " + score, size: 22, color: "#fff", gap: 34 },
-        { text: "ENTER / 터치로 재시작", size: 16, color: "#7a8bd0" },
+        { text: "터치로 재시작", size: 16, color: "#7a8bd0" },
       ], H / 2 - 30);
     }
   }
