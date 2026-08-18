@@ -237,10 +237,14 @@
     ctx.lineWidth = 1;
   }
 
+  // ---- 크기 배율 -----------------------------------------------
+  const SPRITE_SCALE = 1.8; // 비행기(고니·적 새) 크기 배율 (기본 대비)
+  const SW = Math.round(32 * SPRITE_SCALE), SH = Math.round(26 * SPRITE_SCALE); // 고니 스케일 크기
+  const EW = Math.round(30 * SPRITE_SCALE), EH = Math.round(24 * SPRITE_SCALE); // 적 스케일 크기
+
   // ---- 플레이어 -------------------------------------------------
-  // 기본 함선 폭 32(중심 = x+16). 더블 함선은 폭 64(중심 = x+32, 함선 두 대).
   const player = {
-    x: W / 2 - 16, y: H - 104, w: 32, h: 26,   // 갈대밭 위로 올려 시야 확보
+    x: W / 2 - SW / 2, y: H - 116, w: SW, h: SH,   // 갈대밭 위로 올려 시야 확보
     speed: 260, cooldown: 0, alive: true, respawn: 0,
     dual: false, invuln: 0,
     weaponLevel: 1, laserTime: 0, rapidTime: 0, shield: false, // 파워업 상태
@@ -248,9 +252,15 @@
   function setDual(on) {
     const cx = player.x + player.w / 2;
     player.dual = on;
-    player.w = on ? 64 : 32;
+    player.w = on ? SW * 2 : SW;   // 더블 함선 = 고니 두 마리 폭
     player.x = cx - player.w / 2;
     clampPlayer();
+  }
+  // 발사·레이저·그리기용 고니 중심 x 목록 (단일 1개, 더블 2개)
+  function shipOrigins() {
+    return player.dual
+      ? [player.x + player.w * 0.25, player.x + player.w * 0.75]
+      : [player.x + player.w / 2];
   }
   function clampPlayer() { player.x = Math.max(6, Math.min(W - player.w - 6, player.x)); }
 
@@ -270,10 +280,11 @@
   };
 
   // ---- 편대(Formation) ------------------------------------------
-  const formation = { offsetX: 0, dir: 1, cols: 8, rows: 4, cellW: 42, cellH: 38, top: 70, swing: 30 };
+  const formation = { offsetX: 0, dir: 1, cols: 7, rows: 4, cellW: 60, cellH: 54, top: 66, swing: 18 };
   function formationX(col) {
     const totalW = (formation.cols - 1) * formation.cellW;
-    return W / 2 - totalW / 2 + col * formation.cellW + formation.offsetX;
+    // -EW/2: 반환값이 적의 좌측 x이므로 새 폭의 절반만큼 당겨 편대를 화면 중앙에 맞춤
+    return W / 2 - totalW / 2 + col * formation.cellW + formation.offsetX - EW / 2;
   }
   function formationY(row) { return formation.top + row * formation.cellH; }
 
@@ -291,7 +302,7 @@
         const fromLeft = (r + c) % 2 === 0;
         enemies.push({
           col: c, row: r,
-          x: fromLeft ? -40 : W + 40, y: -30 - r * 20, w: 30, h: 24,
+          x: fromLeft ? -50 : W + 50, y: -40 - r * 24, w: EW, h: EH,
           type: def.type, color: def.color, hp: def.hp, score: def.score,
           state: "entering",         // entering|formation|diving|tractor|returning
           t: (r * formation.cols + c) * 0.05,
@@ -390,13 +401,13 @@
     return player.rapidTime > 0 ? cd * 0.55 : cd;
   }
   function firePlayer() {
-    const origins = player.dual ? [player.x + 16, player.x + 48] : [player.x + 16];
+    const origins = shipOrigins();
     const speed = 520 * (player.rapidTime > 0 ? 1.3 : 1);
     const lvl = player.weaponLevel;
-    const shot = (cx, vx) => playerBullets.push({ x: cx - 2, y: player.y, w: 4, h: 12, v: -speed, vx: vx || 0 });
+    const shot = (cx, vx) => playerBullets.push({ x: cx - 3, y: player.y, w: 6, h: 16, v: -speed, vx: vx || 0 });
     for (const ox of origins) {
       if (lvl <= 2) shot(ox, 0);
-      else if (lvl === 3) { shot(ox - 6, 0); shot(ox + 6, 0); }
+      else if (lvl === 3) { shot(ox - 8, 0); shot(ox + 8, 0); }
       else { shot(ox, 0); shot(ox, -150); shot(ox, 150); } // 확산탄
     }
     sfx.shoot();
@@ -430,15 +441,15 @@
           e.divePath = { startX: e.x, dir: e.x < W / 2 ? 1 : -1 };
           diving++; sfx.dive();
         } else if (player.alive && Math.random() < e.fireChance * (1 + tf * 1.8)) {
-          enemyBullets.push({ x: e.x + e.w / 2 - 2, y: e.y + e.h, w: 4, h: 10, v: 220 * (1 + tf * 0.3) });
+          enemyBullets.push({ x: e.x + e.w / 2 - 3, y: e.y + e.h, w: 6, h: 14, v: 220 * (1 + tf * 0.3) });
         }
       } else if (e.state === "diving") {
         e.diveT += dt;
         e.y += 190 * (1 + tf * 0.4) * dt;
         e.x = e.divePath.startX + Math.sin(e.diveT * 4) * 90 * e.divePath.dir;
         if (player.alive && Math.random() < 0.02 * (1 + tf))
-          enemyBullets.push({ x: e.x + e.w / 2 - 2, y: e.y + e.h, w: 4, h: 10, v: 260 * (1 + tf * 0.3) });
-        if (e.y > H + 30) { e.y = -30; e.state = "entering"; e.t = 0; }
+          enemyBullets.push({ x: e.x + e.w / 2 - 3, y: e.y + e.h, w: 6, h: 14, v: 260 * (1 + tf * 0.3) });
+        if (e.y > H + 40) { e.y = -40; e.state = "entering"; e.t = 0; }
       } else if (e.state === "tractor") {
         e.tractorT += dt;
         const hoverY = 220;
@@ -464,8 +475,8 @@
 
       // 포획한 함선을 보스 위에 매달아 이동
       if (e.hasCaptive && captive && captive.state === "held") {
-        captive.x = e.x + (e.w - 32) / 2;
-        captive.y = e.y - 26;
+        captive.x = e.x + (e.w - SW) / 2;
+        captive.y = e.y - SH;
       }
     }
   }
@@ -477,7 +488,7 @@
     player.laserTime = 0; player.rapidTime = 0;
     explode(player.x + player.w / 2, player.y + player.h / 2, "#e8eef4", 20);
     sfx.playerDie();
-    captive = { state: "held", x: boss.x, y: boss.y - 26, boss: boss, vy: 0 };
+    captive = { state: "held", x: boss.x, y: boss.y - SH, boss: boss, vy: 0 };
     boss.hasCaptive = true;
     boss.state = "returning";
     if (lives <= 0) state = STATE.GAMEOVER;
@@ -493,7 +504,7 @@
     captive.x += Math.sin(captive.y * 0.03) * 0.6;
     // 플레이어가 밑에서 받아내면 더블 함선으로 도킹
     if (player.alive && player.invuln <= 0) {
-      const capRect = { x: captive.x, y: captive.y, w: 32, h: 26 };
+      const capRect = { x: captive.x, y: captive.y, w: SW, h: SH };
       if (rectHit(capRect, player)) {
         captive = null;
         setDual(true);
@@ -519,7 +530,7 @@
     if (Math.random() > chance) return;
     const r = Math.random();
     const type = r < 0.40 ? "power" : r < 0.66 ? "rapid" : r < 0.85 ? "laser" : r < 0.96 ? "shield" : "life";
-    items.push({ x: x - 9, y: y - 9, w: 18, h: 18, type, vy: 80 + Math.random() * 30, sway: Math.random() * Math.PI * 2 });
+    items.push({ x: x - 13, y: y - 13, w: 26, h: 26, type, vy: 80 + Math.random() * 30, sway: Math.random() * Math.PI * 2 });
   }
   function applyItem(type) {
     switch (type) {
@@ -541,14 +552,14 @@
   }
   // 레이저: 고니 위 세로 기둥에 겹친 적에게 초당 다단 히트
   function updateLaser(dt) {
-    const origins = player.dual ? [player.x + 16, player.x + 48] : [player.x + 16];
+    const origins = shipOrigins();
     let tick = false;
     for (const e of enemies) {
       if (!e.alive) continue;
       e.laserCd = (e.laserCd || 0) - dt;
       if (e.laserCd > 0) continue;
       for (const ox of origins) {
-        if (e.x < ox + 5 && e.x + e.w > ox - 5 && e.y < player.y) {
+        if (e.x < ox + 6 && e.x + e.w > ox - 6 && e.y < player.y) {
           e.hp--; e.laserCd = 0.1; tick = true;
           explode(e.x + e.w / 2, e.y + e.h / 2, "#57e6c8", 4);
           if (e.hp <= 0) {
@@ -659,66 +670,69 @@
 
   // ---- 렌더링 ---------------------------------------------------
   // 주인공: 흰색 고니(백조) — 위를 향해 난다. color 지정 시 포획된(주황) 고니.
+  // cx=중심 x, top=상단 y. 기본 32×26 아트를 SPRITE_SCALE로 확대해 그린다.
   function drawSwan(cx, top, color) {
     const body = color || "#ffffff";
     const wing = color || "#dfe7f0";
+    ctx.save();
+    ctx.translate(cx, top);
+    ctx.scale(SPRITE_SCALE, SPRITE_SCALE);
     // 몸통
     ctx.fillStyle = body;
-    ctx.fillRect(cx - 6, top + 11, 12, 9);
+    ctx.fillRect(-6, 11, 12, 9);
     // 날개 (양쪽으로 펼침)
     ctx.fillStyle = wing;
-    ctx.fillRect(cx - 15, top + 12, 10, 6);
-    ctx.fillRect(cx + 5, top + 12, 10, 6);
+    ctx.fillRect(-15, 12, 10, 6);
+    ctx.fillRect(5, 12, 10, 6);
     // 날개 끝 강조
     ctx.fillStyle = color || "#b9c6d6";
-    ctx.fillRect(cx - 15, top + 12, 3, 6);
-    ctx.fillRect(cx + 12, top + 12, 3, 6);
+    ctx.fillRect(-15, 12, 3, 6);
+    ctx.fillRect(12, 12, 3, 6);
     // 꼬리
     ctx.fillStyle = body;
-    ctx.fillRect(cx - 2, top + 19, 4, 5);
+    ctx.fillRect(-2, 19, 4, 5);
     // 긴 목 (S자로 앞으로 굽음 — 고니 특징)
-    ctx.fillRect(cx - 1, top + 4, 4, 8);
-    ctx.fillRect(cx + 1, top + 1, 3, 5);
+    ctx.fillRect(-1, 4, 4, 8);
+    ctx.fillRect(1, 1, 3, 5);
     // 머리
-    ctx.fillRect(cx + 1, top - 1, 5, 4);
+    ctx.fillRect(1, -1, 5, 4);
     // 부리 (주황)
     ctx.fillStyle = "#ff9a3c";
-    ctx.fillRect(cx + 5, top, 3, 3);
+    ctx.fillRect(5, 0, 3, 3);
     // 눈
     ctx.fillStyle = "#222";
-    ctx.fillRect(cx + 3, top, 1, 1);
+    ctx.fillRect(3, 0, 1, 1);
+    ctx.restore();
   }
   function drawPlayer() {
     if (!player.alive) return;
     if (player.invuln > 0 && Math.floor(player.invuln * 12) % 2 === 0) return; // 무적 깜빡임
     const top = player.y;
-    if (player.dual) { drawSwan(player.x + 16, top); drawSwan(player.x + 48, top); }
-    else drawSwan(player.x + 16, top);
+    for (const ox of shipOrigins()) drawSwan(ox, top);
     // 보호막 링
     if (player.shield) {
       ctx.save();
       ctx.strokeStyle = "rgba(106,168,255,0.85)"; ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.ellipse(player.x + player.w / 2, top + 12, player.w / 2 + 6, 20, 0, 0, Math.PI * 2);
+      ctx.ellipse(player.x + player.w / 2, top + player.h * 0.5, player.w / 2 + 8, player.h * 0.5 + 6, 0, 0, Math.PI * 2);
       ctx.stroke();
       ctx.restore();
     }
   }
   function drawCaptive() {
     if (!captive) return;
-    drawSwan(captive.x + 16, captive.y, "#ff8a5a"); // 포획된 고니는 주황빛
+    drawSwan(captive.x + SW / 2, captive.y, "#ff8a5a"); // 포획된 고니는 주황빛
   }
   // 레이저빔: 고니 위로 뻗는 밝은 청록 기둥
   function drawLaser() {
     if (player.laserTime <= 0 || !player.alive) return;
-    const origins = player.dual ? [player.x + 16, player.x + 48] : [player.x + 16];
     const flick = 0.55 + Math.random() * 0.25;
-    for (const ox of origins) {
+    for (const ox of shipOrigins()) {
       ctx.save();
       ctx.globalAlpha = flick * 0.4; ctx.fillStyle = "#57e6c8";
-      ctx.fillRect(ox - 9, 0, 18, player.y + 8);
+      ctx.fillRect(ox - 12, 0, 24, player.y + 10);
       ctx.globalAlpha = flick; ctx.fillStyle = "#d6fff5";
-      ctx.fillRect(ox - 3, 0, 6, player.y + 8);
+      ctx.fillRect(ox - 4, 0, 8, player.y + 10);
       ctx.restore();
     }
   }
@@ -740,7 +754,7 @@
       ctx.fillStyle = "rgba(18,14,26,0.85)"; roundRect(it.x, it.y + bob, it.w, it.h, 4); ctx.fill();
       ctx.lineWidth = 2; ctx.strokeStyle = d.color; roundRect(it.x, it.y + bob, it.w, it.h, 4); ctx.stroke();
       ctx.restore();
-      ctx.fillStyle = d.color; ctx.font = "bold 12px 'Courier New', monospace";
+      ctx.fillStyle = d.color; ctx.font = "bold 16px 'Courier New', monospace";
       ctx.textAlign = "center"; ctx.textBaseline = "middle";
       ctx.fillText(d.label, it.x + it.w / 2, it.y + bob + it.h / 2 + 1);
       ctx.textBaseline = "alphabetic";
@@ -748,51 +762,59 @@
   }
 
   function drawEnemy(e) {
-    const { x, y, w, h, color, type } = e;
-    // 견인빔
+    const { x, y, w, h, type } = e;
+    // 견인빔 (월드 좌표, 커진 보스에 맞춰 폭도 비례)
     if (e.beamOn) {
-      const cx = x + w / 2, halfTop = 6, halfBot = 24 + (H - y - h) * 0.12;
+      const cx = x + w / 2, halfTop = w * 0.18, halfBot = w * 0.5 + (H - y - h) * 0.12;
       ctx.fillStyle = "rgba(127,214,255,0.16)";
       ctx.beginPath();
       ctx.moveTo(cx - halfTop, y + h); ctx.lineTo(cx + halfTop, y + h);
       ctx.lineTo(cx + halfBot, H); ctx.lineTo(cx - halfBot, H);
       ctx.closePath(); ctx.fill();
     }
-    const cx = x + w / 2;
+    // 기본 30×24 아트를 SPRITE_SCALE로 확대해 그린다.
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(SPRITE_SCALE, SPRITE_SCALE);
+    drawBirdBase(type);
+    ctx.restore();
+  }
+  // 기본 30×24 좌표계로 새를 그린다 (중심 cx=15, 상단 y=0).
+  function drawBirdBase(type) {
     if (type === "crane") {
       // 두루미(보스): 흰 몸 · 검은 날개끝 · 붉은 정수리 · 아래로 뻗은 목 · 위로 트는 다리
       ctx.fillStyle = "#8a8a8a";                          // 다리 (뒤로 뻗음)
-      ctx.fillRect(cx - 1, y, 1, 6); ctx.fillRect(cx + 1, y, 1, 6);
+      ctx.fillRect(14, 0, 1, 6); ctx.fillRect(16, 0, 1, 6);
       ctx.fillStyle = "#eef2f6";                          // 몸통 + 날개
-      ctx.fillRect(cx - 5, y + 6, 10, 9);
-      ctx.fillRect(x, y + 7, 8, 5); ctx.fillRect(x + w - 8, y + 7, 8, 5);
+      ctx.fillRect(10, 6, 10, 9);
+      ctx.fillRect(0, 7, 8, 5); ctx.fillRect(22, 7, 8, 5);
       ctx.fillStyle = "#1a1a1a";                          // 검은 날개끝
-      ctx.fillRect(x, y + 7, 3, 5); ctx.fillRect(x + w - 3, y + 7, 3, 5);
+      ctx.fillRect(0, 7, 3, 5); ctx.fillRect(27, 7, 3, 5);
       ctx.fillStyle = "#eef2f6";                          // 목 · 머리
-      ctx.fillRect(cx - 2, y + 14, 4, 7); ctx.fillRect(cx - 2, y + 20, 5, 4);
-      ctx.fillStyle = "#e63a3a"; ctx.fillRect(cx - 1, y + 18, 3, 2); // 붉은 정수리
-      ctx.fillStyle = "#333"; ctx.fillRect(cx, y + 23, 2, 2);        // 부리
+      ctx.fillRect(13, 14, 4, 7); ctx.fillRect(13, 20, 5, 4);
+      ctx.fillStyle = "#e63a3a"; ctx.fillRect(14, 18, 3, 2); // 붉은 정수리
+      ctx.fillStyle = "#333"; ctx.fillRect(15, 23, 2, 2);   // 부리
     } else if (type === "goose") {
       // 기러기: 갈색 몸 · 진한 날개끝 · 어두운 목/머리 · 주황 부리
-      ctx.fillStyle = "#7c5a34"; ctx.fillRect(cx - 2, y + 2, 4, 4);  // 꼬리
+      ctx.fillStyle = "#7c5a34"; ctx.fillRect(13, 2, 4, 4); // 꼬리
       ctx.fillStyle = "#b98a5a";                          // 몸통 + 날개
-      ctx.fillRect(cx - 6, y + 6, 12, 9);
-      ctx.fillRect(x + 1, y + 8, 7, 5); ctx.fillRect(x + w - 8, y + 8, 7, 5);
+      ctx.fillRect(9, 6, 12, 9);
+      ctx.fillRect(1, 8, 7, 5); ctx.fillRect(22, 8, 7, 5);
       ctx.fillStyle = "#7c5a34";                          // 진한 날개끝
-      ctx.fillRect(x + 1, y + 8, 3, 5); ctx.fillRect(x + w - 4, y + 8, 3, 5);
+      ctx.fillRect(1, 8, 3, 5); ctx.fillRect(26, 8, 3, 5);
       ctx.fillStyle = "#5c4326";                          // 어두운 목 · 머리
-      ctx.fillRect(cx - 2, y + 14, 4, 6); ctx.fillRect(cx - 2, y + 19, 5, 4);
-      ctx.fillStyle = "#e8a24a"; ctx.fillRect(cx - 1, y + 22, 3, 2); // 부리
+      ctx.fillRect(13, 14, 4, 6); ctx.fillRect(13, 19, 5, 4);
+      ctx.fillStyle = "#e8a24a"; ctx.fillRect(14, 22, 3, 2); // 부리
     } else {
       // 철새: 멀리 나는 작은 새 실루엣 (V자 날개)
       ctx.fillStyle = "#8bb0d6";
-      ctx.fillRect(cx - 1, y + 4, 2, 4);                  // 꼬리
-      ctx.fillRect(cx - 3, y + 8, 6, 8);                  // 몸통
-      ctx.fillRect(cx - 2, y + 15, 4, 4);                 // 머리
-      ctx.fillRect(cx - 12, y + 6, 4, 3); ctx.fillRect(cx + 8, y + 6, 4, 3);   // 바깥 날개
-      ctx.fillRect(cx - 8, y + 8, 4, 3); ctx.fillRect(cx + 4, y + 8, 4, 3);
-      ctx.fillRect(cx - 4, y + 10, 3, 3); ctx.fillRect(cx + 1, y + 10, 3, 3);  // 안쪽 날개
-      ctx.fillStyle = "#e8c24a"; ctx.fillRect(cx - 1, y + 18, 2, 2);           // 부리
+      ctx.fillRect(14, 4, 2, 4);                  // 꼬리
+      ctx.fillRect(12, 8, 6, 8);                  // 몸통
+      ctx.fillRect(13, 15, 4, 4);                 // 머리
+      ctx.fillRect(3, 6, 4, 3); ctx.fillRect(23, 6, 4, 3);   // 바깥 날개
+      ctx.fillRect(7, 8, 4, 3); ctx.fillRect(19, 8, 4, 3);
+      ctx.fillRect(11, 10, 3, 3); ctx.fillRect(16, 10, 3, 3); // 안쪽 날개
+      ctx.fillStyle = "#e8c24a"; ctx.fillRect(14, 18, 2, 2); // 부리
     }
   }
 
